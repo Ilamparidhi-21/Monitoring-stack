@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+
+  node-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile.nodeexporter
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    restart: always
+
+  promtail:
+    build:
+      context: .
+      dockerfile: Dockerfile.promtail
+    container_name: promtail
+    volumes:
+      - /var/log:/var/log
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
