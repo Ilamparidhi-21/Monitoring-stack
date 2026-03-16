@@ -1,0 +1,68 @@
+FROM grafana/promtail:latest
+
+COPY promtail-config.yml /etc/promtail/config.yml
+
+EXPOSE 9080
+
+CMD ["-config.file=/etc/promtail/config.yml"]
+ubuntu@ip-10-0-9-146:~$ cat promtail-config.yml
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://35.154.102.99:3100/loki/api/v1/push
+
+scrape_configs:
+
+  # -----------------------------
+  # System Logs
+  # -----------------------------
+  - job_name: system-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          host: worker1
+          __path__: /var/log/*.log
+
+
+  # -----------------------------
+  # Docker Container Logs
+  # -----------------------------
+  - job_name: docker-logs
+
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+
+    relabel_configs:
+
+      # container name
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: container
+
+      # container image
+      - source_labels: ['__meta_docker_container_image']
+        target_label: image
+
+      # container id
+      - source_labels: ['__meta_docker_container_id']
+        target_label: container_id
+
+      # log stream (stdout/stderr)
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: stream
+
+      # VERY IMPORTANT – container log file path
+      - source_labels: ['__meta_docker_container_id']
+        target_label: __path__
+        replacement: /var/lib/docker/containers/$1/$1-json.log
+
+    pipeline_stages:
+      - docker: {}
