@@ -2,12 +2,43 @@
 sudo mkdir -p /var/www/admin_fe
 sudo chown -R ubuntu:ubuntu /var/www/admin_fe
 🔧 2. Update Jenkins Pipeline (Add Deploy Stage)
-stage('Deploy') {
-    steps {
-        sh '''
-        rm -rf /var/www/admin_fe/*
-        cp -r dist/* /var/www/admin_fe/
-        '''
+pipeline {
+    agent { label 'ubuntu-prod-agent' }
+
+    stages {
+
+        stage('Install Dependencies') {
+            steps {
+                sh "npm ci"
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh "npm run build"
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh '''
+                # Create directory if not exists
+                mkdir -p /var/www/admin_fe
+
+                # Clean old files
+                rm -rf /var/www/admin_fe/*
+
+                # Copy new build
+                cp -r dist/* /var/www/admin_fe/
+                '''
+            }
+        }
+
+        stage('Reload Nginx') {
+            steps {
+                sh "sudo systemctl reload nginx"
+            }
+        }
     }
 }
 🔧 3. Fix Nginx
