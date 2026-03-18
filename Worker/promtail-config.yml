@@ -1,11 +1,3 @@
-FROM grafana/promtail:latest
-
-COPY promtail-config.yml /etc/promtail/config.yml
-
-EXPOSE 9080
-
-CMD ["-config.file=/etc/promtail/config.yml"]
-ubuntu@ip-10-0-9-146:~$ cat promtail-config.yml
 server:
   http_listen_port: 9080
   grpc_listen_port: 0
