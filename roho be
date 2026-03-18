@@ -9,7 +9,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 checkout scm
@@ -25,12 +24,17 @@ pipeline {
             }
         }
 
-        stage('Install and Build') {
+        stage('Install Dependencies & Build') {
             steps {
                 dir('roho_backend_core') {
                     sh '''
+                        echo "Clearing old build output..."
                         rm -rf out
+
+                        echo "Installing dependencies..."
                         npm install
+
+                        echo "Building project with increased memory..."
                         npm run build
                     '''
                 }
@@ -41,21 +45,18 @@ pipeline {
             steps {
                 sh '''
                     mkdir -p ${DEPLOY_DIR}
-
                     rm -rf ${DEPLOY_DIR:?}/*
-
                     cp -r roho_backend_core/* ${DEPLOY_DIR}
                 '''
             }
         }
 
-        stage('Restart Backend') {
+        stage('Restart Backend with PM2') {
             steps {
                 sh '''
                     cd ${DEPLOY_DIR}
-
+                    echo "Restarting backend service with PM2..."
                     pm2 restart roho-be-core || pm2 start npm --name roho-be-core -- start
-
                     pm2 save
                 '''
             }
@@ -65,24 +66,24 @@ pipeline {
     post {
         success {
             script {
-                def msg = """Backend Deployment Successful
+                def msg = """✅ *Backend Deployment Successful*
 Branch: ${env.GIT_BRANCH}
 Author: ${env.GIT_AUTHOR}
 Commit: ${env.GIT_COMMIT}
 Message: ${env.GIT_COMMIT_MSG}
-Build Logs: ${env.BUILD_URL}"""
+[View Build Logs](${env.BUILD_URL})"""
                 sendTelegramMessage(msg)
             }
         }
 
         failure {
             script {
-                def msg = """Backend Deployment Failed
+                def msg = """❌ *Backend Deployment Failed*
 Branch: ${env.GIT_BRANCH}
 Author: ${env.GIT_AUTHOR}
 Commit: ${env.GIT_COMMIT}
 Message: ${env.GIT_COMMIT_MSG}
-Build Logs: ${env.BUILD_URL}"""
+[View Build Logs](${env.BUILD_URL})"""
                 sendTelegramMessage(msg)
             }
         }
@@ -95,9 +96,10 @@ def sendTelegramMessage(String message) {
         string(credentialsId: 'TELEGRAM_CHAT_ID', variable: 'CHAT_ID')
     ]) {
         sh """
-            curl -s -X POST \
-            https://api.telegram.org/bot${TOKEN}/sendMessage \
-            -d chat_id=${CHAT_ID} \
+            curl -s -X POST \\
+            https://api.telegram.org/bot${TOKEN}/sendMessage \\
+            -d chat_id=${CHAT_ID} \\
+            -d parse_mode=Markdown \\
             --data-urlencode "text=${message}"
         """
     }
