@@ -16,6 +16,7 @@ services:
       context: .
       dockerfile: Dockerfile.promtail
     container_name: promtail
+    user: root
     volumes:
       - /var/log:/var/log
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
